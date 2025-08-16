@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa de Barcarena - Conectividade nas Escolas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <style>
+    :root { --bg:#ffffff; --panel:#f5f7fb; --text:#0b1020; --muted:#5b6b82; --blue:#1e90ff; --red:#ff4d4f; }
+    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; }
+    .app { display:grid; grid-template-rows:auto 1fr; height:100%; }
+    header { display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:12px 16px; background:var(--panel); box-shadow:0 2px 12px rgba(0,0,0,.08); position:sticky; top:0; z-index:1000; }
+    header h1 { font-size:18px; margin:0; letter-spacing:.2px; }
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:14px; color:var(--muted); }
+    .badge { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#eef2f9; }
+    .legend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+    .legend-dot.blue { background:var(--blue); }
+    .legend-dot.red { background:var(--red); }
+    .map { height:calc(100vh - 100px); }
+    .leaflet-popup-content { font-size:14px; }
+    table.meta { border-collapse: collapse; width:100%; }
+    table.meta td { border-bottom: 1px solid #eef2f9; padding: 2px 0; vertical-align: top; }
+    table.meta td.k { color:#475569; width: 40%; padding-right: 8px; }
+    .footer { position:absolute; right:12px; bottom:12px; background:rgba(255,255,255,.9); color:var(--muted); padding:6px 10px; border-radius:8px; z-index:500; font-size:12px; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+    select { padding:4px; border-radius:6px; border:1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Mapa de Barcarena - Conectividade nas Escolas (Censo 2023)</h1>
+      <div class="controls">
+        <span class="badge"><span class="legend-dot blue"></span> Com internet</span>
+        <span class="badge"><span class="legend-dot red"></span> Sem internet</span>
+        <label class="badge"><input id="toggleWith" type="checkbox" checked/> Com Internet</label>
+        <label class="badge"><input id="toggleWithout" type="checkbox" checked/> Sem Internet</label>
+        <label>Dependência:
+          <select id="filterDependencia">
+            <option value="">Todas</option>
+          </select>
+        </label>
+        <label>Localização:
+          <select id="filterLocalizacao">
+            <option value="">Todas</option>
+          </select>
+        </label>
+        <span class="badge"><strong id="countAll">0</strong> escolas</span>
+      </div>
+    </header>
+    <div id="map" class="map"></div>
+    <div class="footer">Fonte: Censo 2023</div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    const map = L.map('map').setView([-1.504, -48.625], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const groupWith = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
+    const groupWithout = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
+
+    const $countAll = document.getElementById('countAll');
+    const $toggleWith = document.getElementById('toggleWith');
+    const $toggleWithout = document.getElementById('toggleWithout');
+    const $filterDep = document.getElementById('filterDependencia');
+    const $filterLoc = document.getElementById('filterLocalizacao');
+
+    let SCHOOLS = [];
+    let latKey, lonKey;
+
+    function pin(color) {
+      return L.divIcon({
+        className: 'custom-pin',
+        html: `
+          <svg width="26" height="38" viewBox="0 0 26 38" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 0C5.82 0 0 5.82 0 13c0 9.02 11.24 23.21 11.72 23.81a1.7 1.7 0 0 0 2.56 0C14.76 36.21 26 22.02 26 13 26 5.82 20.18 0 13 0z" fill="${color}"/>
+            <circle cx="13" cy="13" r="5.2" fill="white"/>
+          </svg>
+        `,
+        iconSize: [26, 38],
+        iconAnchor: [13, 38],
+        popupAnchor: [0, -34]
+      });
+    }
+    const iconBlue = pin('#1e90ff');
+    const iconRed  = pin('#ff4d4f');
+
+    function normalizeBool(v) {
+      if (v == null) return null;
+      const s = String(v).trim().toLowerCase();
+      if (["sim","yes","true","1","y","s","possui","com","tem"].includes(s)) return true;
+      if (["nao","não","no","false","0","n","sem"].includes(s)) return false;
+      const n = Number(s.replace(',', '.'));
+      if (!isNaN(n)) return n > 0;
+      return null;
+    }
+    function parseNumber(v) {
+      if (v == null) return NaN;
+      const s = String(v).trim().replace(',', '.');
+      return Number(s);
+    }
+    const eq = (a,b) => String(a||'').trim().toLowerCase() === String(b||'').trim().toLowerCase();
+
+    function buildPopup(row) {
+      let title = row["Nome"] || row["nome"] || row["Escola"] || "Escola";
+      let rows = "";
+      Object.keys(row).forEach(k => {
+        if (!k.toLowerCase().includes("lat") && !k.toLowerCase().includes("lon")) {
+          const val = row[k];
+          if (val) rows += `<tr><td class="k">${k}</td><td>${String(val)}</td></tr>`;
+        }
+      });
+      return `<div><strong>${title}</strong><br/><br/><table class="meta">${rows}</table></div>`;
+    }
+
+    function detectLatLonKeys() {
+      const keys = Object.keys(SCHOOLS[0] || {});
+      const findKey = (cands) => {
+        for (const k of keys) {
+          const kl = k.toLowerCase();
+          for (const c of cands) if (kl === c) return k;
+        }
+        for (const k of keys) {
+          const kl = k.toLowerCase();
+          for (const c of cands) if (kl.includes(c)) return k;
+        }
+        return null;
+      };
+      latKey = findKey(["latitude","lat","coord y","y"]);
+      lonKey = findKey(["longitude","lon","lng","long","coord x","x"]);
+    }
+
+    function updateCountVisible() {
+      // Conta somente o que está visível conforme os toggles
+      const withCount = groupWith.getLayers().length;
+      const withoutCount = groupWithout.getLayers().length;
+      const visible = ($toggleWith.checked ? withCount : 0) + ($toggleWithout.checked ? withoutCount : 0);
+      $countAll.textContent = visible;
+    }
+
+    function refreshMap() {
+      groupWith.clearLayers();
+      groupWithout.clearLayers();
+      const depVal = $filterDep.value;
+      const locVal = $filterLoc.value;
+
+      SCHOOLS.forEach(r => {
+        const lat = parseNumber(latKey ? r[latKey] : r["Latitude"]);
+        const lon = parseNumber(lonKey ? r[lonKey] : r["Longitude"]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        if (depVal && !eq(r["Dependência"], depVal)) return;
+        if (locVal && !eq(r["Localização"], locVal)) return;
+        const hasNet = normalizeBool(r["Internet"]);
+        const marker = L.marker([lat, lon], { icon: hasNet === false ? iconRed : iconBlue }).bindPopup(buildPopup(r));
+        (hasNet === false ? groupWithout : groupWith).addLayer(marker);
+      });
+
+      // Ajusta visibilidade e contador com base nos toggles
+      refreshVisibility();
+      updateCountVisible();
+
+      // Ajusta os bounds somente considerando grupos ativos
+      const groupsActive = [];
+      if ($toggleWith.checked) groupsActive.push(groupWith);
+      if ($toggleWithout.checked) groupsActive.push(groupWithout);
+      if (groupsActive.length) {
+        const bounds = L.featureGroup(groupsActive).getBounds();
+        if (bounds.isValid()) map.fitBounds(bounds.pad(0.1));
+      }
+    }
+
+    function refreshVisibility() {
+      if ($toggleWith.checked) map.addLayer(groupWith); else map.removeLayer(groupWith);
+      if ($toggleWithout.checked) map.addLayer(groupWithout); else map.removeLayer(groupWithout);
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.map(v => String(v||'').trim()).filter(Boolean))]
+        .sort((a,b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    }
+
+    function populateFilterOptions() {
+      const deps = uniqueSorted(SCHOOLS.map(r => r["Dependência"]));
+      deps.forEach(v => { const opt = document.createElement("option"); opt.value = v; opt.textContent = v; $filterDep.appendChild(opt); });
+      const locs = uniqueSorted(SCHOOLS.map(r => r["Localização"]));
+      locs.forEach(v => { const opt = document.createElement("option"); opt.value = v; opt.textContent = v; $filterLoc.appendChild(opt); });
+    }
+
+    // Eventos — sempre recalcula o mapa e o contador
+    $toggleWith.addEventListener('change', () => { refreshMap(); });
+    $toggleWithout.addEventListener('change', () => { refreshMap(); });
+    $filterDep.addEventListener('change', () => { refreshMap(); });
+    $filterLoc.addEventListener('change', () => { refreshMap(); });
+
+    const DATA_URL = 'escolas_barcarena.csv';
+    async function loadCSV() {
+      try {
+        const res = await fetch(DATA_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Não foi possível carregar o CSV (${res.status})`);
+        const text = await res.text();
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        SCHOOLS = parsed.data;
+
+        detectLatLonKeys();
+        populateFilterOptions();
+        refreshMap();
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao carregar dados: ' + e.message);
+      }
+    }
+    loadCSV();
+  </script>
+</body>
+</html>
