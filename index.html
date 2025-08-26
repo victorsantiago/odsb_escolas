@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Barcarena — Escolas (Conectividade)</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+
+  <style>
+    html, body { height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial; }
+    #map { height:100%; }
+    .legend {
+      position: absolute; right: 10px; bottom: 10px; z-index: 600;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.08);
+      max-width: 280px;
+    }
+    .legend h4 { margin: 0 0 6px; font-size: 13px; color: #111827; }
+    .legend .row { display:flex; align-items:center; gap:8px; margin:4px 0; font-size: 12px; color:#374151; }
+    .sw { width:16px; height:0; border-top-width:3px; border-top-style:solid; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="legend" id="legend">
+    <h4>Limites Permanentes</h4>
+    <div id="legendItems"></div>
+  </div>
+
+  <script>
+    // ===== Config =====
+    const KML_BASE = 'kml/';
+    // Cores por camada (linhas dissolvidas)
+    const PERMA_LAYERS = [
+      { name: 'Barcarena',    file: 'barcarena_dissolved_lines.kml', color: '#e74c3c' }, // vermelho
+      { name: 'Murucupi',     file: 'murucupi_dissolved_lines.kml',  color: '#2ecc71' }, // verde
+      { name: 'Vila do Conde',file: 'viladoconde_dissolved_lines.kml', color: '#3498db' }, // azul
+      { name: 'Estradas',     file: 'estradas_dissolved_lines.kml',  color: '#9b59b6' }, // roxo
+      { name: 'Ilhas',        file: 'ilhas_dissolved_lines.kml',     color: '#f39c12' }, // laranja
+    ];
+
+    // ===== Mapa =====
+    const map = L.map('map').setView([-1.5, -48.6], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // ===== Carregar camadas permanentes (linhas) =====
+    const groups = []; // para ajustar bounds
+    function loadPermanentLayers() {
+      const boundsParts = [];
+      PERMA_LAYERS.forEach(cfg => {
+        const url = encodeURI(KML_BASE + cfg.file);
+        const k = omnivore.kml(url);
+        const grp = L.layerGroup().addTo(map);
+        groups.push(grp);
+        k.on('ready', () => {
+          k.eachLayer(lyr => {
+            // Força estilo de linha (sem fill)
+            if (lyr.setStyle) {
+              lyr.setStyle({
+                color: cfg.color,
+                weight: 2.2,
+                opacity: 0.95,
+                fill: false,
+                fillOpacity: 0
+              });
+            }
+            grp.addLayer(lyr);
+            try { boundsParts.push(lyr.getBounds()); } catch(e){}
+          });
+          // Ajusta bounds ao terminar de carregar cada camada
+          try {
+            if (boundsParts.length) {
+              const b = boundsParts.reduce((acc,b)=> acc ? acc.extend(b) : b, null);
+              if (b) map.fitBounds(b, { padding: [20,20] });
+            }
+          } catch(e){}
+        });
+        k.on('error', () => {
+          console.warn('Falha ao carregar', cfg.file);
+        });
+      });
+    }
+
+    // ===== Legenda =====
+    function renderLegend() {
+      const wrap = document.getElementById('legendItems');
+      wrap.innerHTML = PERMA_LAYERS.map(l =>
+        `<div class="row">
+           <span class="sw" style="border-top-color:${l.color}"></span>
+           <span>${l.name}</span>
+         </div>`
+      ).join('');
+    }
+
+    // ===== Start =====
+    renderLegend();
+    loadPermanentLayers();
+  </script>
+</body>
+</html>
