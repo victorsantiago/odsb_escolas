@@ -7,12 +7,11 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-  <style>
+  <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=sBm1GD5ZeZ4mSoH1TZBico6WU__VxvEeKQbt8dJSrwBWaRVbH1bnGmOuWfKooxcz0X3oA1rzIDppkCnBLdjJktQJPrHzeMisSFwfqI5Yry9nVKHmaBaIoTCEOzbZuwjM17PFeilQ966pnEojSSHOerOCgYKesu2UaP7yq1H2_kUp8DKU075wkIfj0kAQTa0qQguAD5TOH0fVrL-muYlDCpTx_Ee1yqg7hDxyefqzTIS1cZhZN7rEczpOJyy_4PlL" charset="UTF-8"></script><style>
     :root {
       --bg:#ffffff; --panel:#f5f7fb; --text:#0b1020; --muted:#5b6b82;
       --blue:#1e90ff; --red:#ff4d4f; --warn:#f59e0b;
       --rowActive:#fff7ed; --rowHover:#f8fafc;
-      --legendBorder:#e9eef7;
     }
     html, body { height:100%; margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; }
@@ -69,38 +68,6 @@
       z-index: 1500;
     }
     .toggle-btn:active { transform: translateY(1px); }
-
-    /* Legend for line layers */
-    .line-legend {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
-      background: #fff;
-      border: 1px solid var(--legendBorder);
-      border-radius: 10px;
-      padding: 10px 12px;
-      box-shadow: 0 6px 24px rgba(0,0,0,.08);
-      z-index: 900;
-      font-size: 12px;
-      min-width: 180px;
-    }
-    .line-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 13px;
-      color: #0b1020;
-    }
-    .line-legend .row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 4px 0;
-    }
-    .swatch {
-      width: 18px;
-      height: 3px;
-      border-radius: 2px;
-      display: inline-block;
-    }
 
     @media (max-width: 900px) {
       .main { grid-template-columns: 1fr; }
@@ -173,18 +140,11 @@
     </div>
   </div>
 
-  <!-- Legend for permanent line layers -->
-  <div id="lineLegend" class="line-legend">
-    <h4>Camadas permanentes</h4>
-    <div id="lineLegendItems"></div>
-  </div>
-
   <button id="toggleAside" class="toggle-btn" aria-label="Abrir/fechar lista">☰</button>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
 
   <script>
     const map = L.map('map').setView([-1.504, -48.625], 11);
@@ -192,44 +152,6 @@
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    /* === Permanent KML line layers (always visible) === */
-    const LINE_LAYERS = [
-      { name: "Barcarena (limite)", url: "barcarena_dissolved_lines.kml", color: "#111827", weight: 3.0 },
-      { name: "Murucupi",           url: "murucupi_dissolved_lines.kml",  color: "#ef4444", weight: 2.5 },
-      { name: "Vila do Conde",      url: "viladoconde_dissolved_lines.kml", color: "#3b82f6", weight: 2.5 },
-      { name: "Estradas",           url: "estradas_dissolved_lines.kml",  color: "#10b981", weight: 2.0 },
-      { name: "Ilhas",              url: "ilhas_dissolved_lines.kml",     color: "#f59e0b", weight: 2.0 }
-    ];
-
-    (function addLineLayers(){
-      const items = [];
-      const boundsParts = [];
-      LINE_LAYERS.forEach(layer => {
-        const g = omnivore.kml(layer.url);
-        g.on('ready', () => {
-          g.eachLayer(lyr => {
-            if (lyr.setStyle) {
-              lyr.setStyle({ color: layer.color, weight: layer.weight, opacity: 0.95, fill: false });
-            }
-            try { boundsParts.push(lyr.getBounds()); } catch(e){}
-          });
-          map.addLayer(g);
-          // legend row
-          items.push(`<div class="row"><span class="swatch" style="background:${layer.color}"></span><span>${layer.name}</span></div>`);
-          document.getElementById('lineLegendItems').innerHTML = items.join("");
-          // fit bounds of all lines so far
-          try {
-            if (boundsParts.length) {
-              const b = boundsParts.reduce((acc,b)=> acc ? acc.extend(b) : b, null);
-              if (b && b.isValid()) map.fitBounds(b.pad(0.1));
-            }
-          } catch(e){}
-        });
-        g.on('error', () => console.warn("Falha ao carregar", layer.url));
-      });
-    })();
-
-    /* === Schools (same behavior as antes) === */
     const groupWith = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
     const groupWithout = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
 
@@ -283,7 +205,12 @@
       const s = String(v).trim().replace(',', '.');
       return Number(s);
     }
-    function esc(x) { return String(x ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function esc(x) {
+      return String(x ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
     function normText(x) {
       return String(x||"").trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
@@ -310,17 +237,23 @@
       return fuzzy.length ? fuzzy[0] : keys[0];
     }
     function getSchoolName(r) {
-      if (nameKey && r[nameKey] != null && String(r[nameKey]).trim() !== "") return String(r[nameKey]).trim();
-      const fallback = val(r, ["Escola","Nome","Nome da Escola","NO_ESCOLA","NO_ENTIDADE"], "");
-      if (fallback) return String(fallback).trim();
-      for (const [k,v] of Object.entries(r)) {
-        if (!v) continue;
-        const kl = k.toLowerCase();
-        if (/(escola|nome|entidade|institu|unidade)/i.test(kl) && !/(latitude|longitude|lat|lng|coord|coordenada)/i.test(kl)) {
-          return String(v).trim();
+      let nm = "";
+      if (nameKey && r[nameKey] != null && String(r[nameKey]).trim() !== "") {
+        nm = String(r[nameKey]).trim();
+      } else {
+        nm = val(r, ["Escola","Nome","Nome da Escola","NO_ESCOLA","NO_ENTIDADE"], "");
+        if (!nm) {
+          for (const [k,v] of Object.entries(r)) {
+            if (!v) continue;
+            const kl = k.toLowerCase();
+            if (/(escola|nome|entidade|institu|unidade)/i.test(kl) && !/(latitude|longitude|lat|lng|coord|coordenada)/i.test(kl)) {
+              nm = String(v).trim();
+              if (nm) break;
+            }
+          }
         }
       }
-      return "(sem nome)";
+      return nm || "(sem nome)";
     }
 
     function buildPopupAll(r) {
@@ -350,7 +283,13 @@
         }
         rows += `<tr><td class="k">${esc(k)}</td><td>${valCell}</td></tr>`;
       }
-      return `<div class="popup-card"><h3>${esc(nome)}</h3><table class="info-table">${rows || `<tr><td colspan="2">Sem dados</td></tr>`}</table></div>`;
+      return `
+        <div class="popup-card">
+          <h3>${esc(nome)}</h3>
+          <table class="info-table">
+            ${rows || `<tr><td colspan="2">Sem dados</td></tr>`}
+          </table>
+        </div>`;
     }
 
     function detectLatLonKeys() {
@@ -365,8 +304,12 @@
       nameKey = detectNameKeyFromHeader();
     }
 
-    function getDependencia(r) { return normText(val(r, ["Dependência","Dependencia","Dependência Administrativa","TP_DEPENDENCIA"], "")); }
-    function getLocalizacao(r) { return normText(val(r, ["Localização","Localizacao","Localização Diferenciada","TP_LOCALIZACAO","ZONA_LOCALIZACAO"], "")); }
+    function getDependencia(r) {
+      return normText(val(r, ["Dependência","Dependencia","Dependência Administrativa","TP_DEPENDENCIA"], ""));
+    }
+    function getLocalizacao(r) {
+      return normText(val(r, ["Localização","Localizacao","Localização Diferenciada","TP_LOCALIZACAO","ZONA_LOCALIZACAO"], ""));
+    }
     function getHasNet(r) {
       const v = val(r, ["Internet","Acesso Internet","Censo Escolar - Internet","INTERNET"], null);
       const b = normalizeBool(v);
@@ -383,61 +326,76 @@
       if ($toggleWithout.checked) visible += withoutCount;
       $countAll.textContent = visible;
     }
+
     function refreshVisibility() {
       if ($toggleWith.checked) map.addLayer(groupWith); else map.removeLayer(groupWith);
       if ($toggleWithout.checked) map.addLayer(groupWithout); else map.removeLayer(groupWithout);
       updateCount();
     }
 
-    let currentActiveRow = null;
-    function clearActiveRow() { if (currentActiveRow && currentActiveRow.isConnected) currentActiveRow.classList.remove('active'); currentActiveRow = null; }
+    function clearActiveRow() {
+      if (currentActiveRow && currentActiveRow.isConnected) {
+        currentActiveRow.classList.remove('active');
+      }
+      currentActiveRow = null;
+    }
+
     function setActiveRowByIndex(idx) {
       clearActiveRow();
       const row = document.querySelector(`tr[data-idx="${idx}"]`);
-      if (row) { row.classList.add('active'); currentActiveRow = row; row.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      if (row) {
+        row.classList.add('active');
+        currentActiveRow = row;
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
     }
+
     function focusMarkerLikeClick(idx) {
-      const marker = markers[idx]; if (!marker) return;
-      const belongs = markerGroupByIndex[idx];
+      const marker = markers[idx];
+      if (!marker) return;
+      const belongs = markerGroupByIndex[idx]; // 'with' | 'without'
       if (belongs === 'with' && !$toggleWith.checked) $toggleWith.checked = true;
       if (belongs === 'without' && !$toggleWithout.checked) $toggleWithout.checked = true;
       refreshVisibility();
       const group = (belongs === 'without') ? groupWithout : groupWith;
       group.zoomToShowLayer(marker, () => {
-        marker.fire('click'); marker.openPopup(); setActiveRowByIndex(idx);
+        marker.fire('click');
+        marker.openPopup();
+        setActiveRowByIndex(idx);
         if (window.matchMedia('(max-width: 900px)').matches) $aside.classList.remove('open');
       });
     }
 
-    const markers = [];
-    const markerGroupByIndex = [];
-    let filteredIdxs = [];
-
+    // Agora computeFilteredIdxs considera: busca, filtros (dep/loc) e toggles (com/sem internet)
     function computeFilteredIdxs() {
       const q = ($search.value || "").toLowerCase().trim();
       const wantWith = $toggleWith.checked;
       const wantWithout = $toggleWithout.checked;
 
-      const bySearch = DATA.map((r, i) => ({ i, nome: (getSchoolName(r)||"").toLowerCase(), r }))
-                           .filter(o => !q || o.nome.includes(q));
+      const bySearch = DATA.map((r, i) => {
+        const nome = getSchoolName(r);
+        return { i, nome: (nome||"").toLowerCase(), r };
+      }).filter(o => !q || o.nome.includes(q));
 
       const final = [];
       for (const {i, r} of bySearch) {
+        // Dependência / Localização
         const depSel = $filterDep.value;
         if (depSel) { const dep = getDependencia(r); if (!dep.includes(depSel)) continue; }
         const locSel = $filterLoc.value;
         if (locSel) { const loc = getLocalizacao(r); if (!loc.includes(locSel)) continue; }
 
-        const hasNet = getHasNet(r);
+        // Toggles (com/sem internet) também atuam como filtro da tabela
+        const hasNet = getHasNet(r); // 'with' | 'without' | 'unknown'
         if (hasNet === 'with' && !wantWith) continue;
         if (hasNet === 'without' && !wantWithout) continue;
-        if (hasNet === 'unknown' && !(wantWith || wantWithout)) continue;
+        if (hasNet === 'unknown' && !(wantWith || wantWithout)) continue; // nenhum selecionado
+
         final.push(i);
       }
       filteredIdxs = final;
     }
 
-    const $tableBody = document.querySelector('#schoolsTable tbody');
     function renderTable(indexes) {
       $tableBody.innerHTML = "";
       indexes.forEach((idx) => {
@@ -448,30 +406,27 @@
         const hasNet = normalizeBool(netRaw);
         const netOut = hasNet===true ? "Sim" : (hasNet===false ? "Não" : String(netRaw||"-"));
         const pillClass = hasNet ? "pill on" : (hasNet===false ? "pill off" : "pill");
+
         const tr = document.createElement("tr");
         tr.setAttribute('data-idx', String(idx));
-        tr.innerHTML = `<td class="clickable">${esc(nome)}</td><td class="clickable">${esc(dep)}</td><td class="clickable"><span class="${pillClass}">${esc(netOut)}</span></td>`;
+        tr.innerHTML = `
+          <td class="clickable">${esc(nome)}</td>
+          <td class="clickable">${esc(dep)}</td>
+          <td class="clickable"><span class="${pillClass}">${esc(netOut)}</span></td>
+        `;
         tr.addEventListener('click', () => focusMarkerLikeClick(idx));
         $tableBody.appendChild(tr);
       });
     }
 
-    const groupWith = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
-    const groupWithout = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
-    const $countAll = document.getElementById('countAll');
-    const $toggleWith = document.getElementById('toggleWith');
-    const $toggleWithout = document.getElementById('toggleWithout');
-    const $warn = document.getElementById('warn');
-    const $search = document.getElementById('searchInput');
-    const $aside = document.querySelector('aside');
-    const $toggleBtn = document.getElementById('toggleAside');
-    const $filterDep = document.getElementById('filterDep');
-    const $filterLoc = document.getElementById('filterLoc');
-
     function rebuildMapAndTable() {
-      groupWith.clearLayers(); groupWithout.clearLayers();
-      markers.length = 0; markerGroupByIndex.length = 0;
+      groupWith.clearLayers();
+      groupWithout.clearLayers();
+      markers.length = 0;
+      markerGroupByIndex.length = 0;
+
       computeFilteredIdxs();
+
       filteredIdxs.forEach((idx) => {
         const r = DATA[idx];
         const lat = parseNumber(latKey ? r[latKey] : r["Latitude"]);
@@ -479,28 +434,24 @@
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         const hasNetBool = normalizeBool(val(r, ["Internet","Acesso Internet","Censo Escolar - Internet","INTERNET"], null));
         const belongs = (hasNetBool === false) ? 'without' : 'with';
-        const marker = L.marker([lat, lon], { icon: belongs === 'without' ? iconRed : iconBlue }).bindPopup(buildPopupAll(r));
+        const marker = L.marker([lat, lon], { icon: belongs === 'without' ? iconRed : iconBlue })
+                        .bindPopup(buildPopupAll(r));
+
         marker.on('popupopen', () => setActiveRowByIndex(idx));
-        marker.on('popupclose', () => { const row = document.querySelector(`tr[data-idx="${idx}"]`); if (row && row === currentActiveRow) clearActiveRow(); });
+        marker.on('popupclose', () => {
+          const row = document.querySelector(`tr[data-idx="${idx}"]`);
+          if (row && row === currentActiveRow) clearActiveRow();
+        });
+
         (belongs === 'without' ? groupWithout : groupWith).addLayer(marker);
-        markers[idx] = marker; markerGroupByIndex[idx] = belongs;
+        markers[idx] = marker;
+        markerGroupByIndex[idx] = belongs;
       });
+
       const bounds = L.featureGroup([groupWith, groupWithout]).getBounds();
       if (bounds.isValid()) map.fitBounds(bounds.pad(0.1));
       refreshVisibility();
       renderTable(filteredIdxs);
-    }
-
-    function detectLatLonKeys() {
-      const keys = Object.keys(DATA[0] || {});
-      function findKey(cands) {
-        for (const k of keys) { const kl = k.toLowerCase(); for (const c of cands) if (kl === c) return k; }
-        for (const k of keys) { const kl = k.toLowerCase(); for (const c of cands) if (kl.includes(c)) return k; }
-        return null;
-      }
-      latKey = findKey(["latitude","latitute","lat","coord y","y","coordenaday","nu_latitude"]);
-      lonKey = findKey(["longitude","lon","lng","long","coord x","x","coordenadax","nu_longitude"]);
-      nameKey = detectNameKeyFromHeader();
     }
 
     const DATA_URL = 'escolas_barcarena.csv';
@@ -515,18 +466,27 @@
         rebuildMapAndTable();
       } catch (e) {
         console.error('Falha ao carregar CSV via fetch:', e);
-        document.getElementById('warn').style.display = 'block';
+        $warn.style.display = 'block';
       }
     }
     loadCSV();
 
-    document.getElementById('searchInput').addEventListener('input', () => { rebuildMapAndTable(); });
-    document.getElementById('filterDep').addEventListener('change', rebuildMapAndTable);
-    document.getElementById('filterLoc').addEventListener('change', rebuildMapAndTable);
-    document.getElementById('toggleWith').addEventListener('change', rebuildMapAndTable);
-    document.getElementById('toggleWithout').addEventListener('change', rebuildMapAndTable);
-    document.getElementById('toggleAside').addEventListener('click', () => { document.querySelector('aside').classList.toggle('open'); });
-    map.on('click', () => { if (window.matchMedia('(max-width: 900px)').matches) document.querySelector('aside').classList.remove('open'); });
+    let searchTimer = null;
+    $search.addEventListener('input', () => {
+      if (searchTimer) cancelAnimationFrame(searchTimer);
+      searchTimer = requestAnimationFrame(rebuildMapAndTable);
+    });
+    $filterDep.addEventListener('change', rebuildMapAndTable);
+    $filterLoc.addEventListener('change', rebuildMapAndTable);
+
+    // Importante: toggles agora também disparam rebuild para refletir na tabela
+    $toggleWith.addEventListener('change', rebuildMapAndTable);
+    $toggleWithout.addEventListener('change', rebuildMapAndTable);
+
+    $toggleBtn.addEventListener('click', () => { $aside.classList.toggle('open'); });
+    map.on('click', () => {
+      if (window.matchMedia('(max-width: 900px)').matches) $aside.classList.remove('open');
+    });
   </script>
 </body>
 </html>
