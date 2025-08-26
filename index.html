@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Barcarena — Escolas (Conectividade)</title>
+  <title>Barcarena — Escolas (Conectividade) + Regiões (KML)</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-  <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=sBm1GD5ZeZ4mSoH1TZBico6WU__VxvEeKQbt8dJSrwBWaRVbH1bnGmOuWfKooxcz0X3oA1rzIDppkCnBLdjJktQJPrHzeMisSFwfqI5Yry9nVKHmaBaIoTCEOzbZuwjM17PFeilQ966pnEojSSHOerOCgYKesu2UaP7yq1H2_kUp8DKU075wkIfj0kAQTa0qQguAD5TOH0fVrL-muYlDCpTx_Ee1yqg7hDxyefqzTIS1cZhZN7rEczpOJyy_4PlL" charset="UTF-8"></script><style>
+  <style>
     :root {
       --bg:#ffffff; --panel:#f5f7fb; --text:#0b1020; --muted:#5b6b82;
       --blue:#1e90ff; --red:#ff4d4f; --warn:#f59e0b;
@@ -69,6 +69,14 @@
     }
     .toggle-btn:active { transform: translateY(1px); }
 
+    /* KML controls */
+    .kml-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .kml-legend { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .kml-swatch { width:14px; height:14px; border-radius:3px; display:inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+    .kml-item { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#eef2f9; }
+    .kml-item input { transform: translateY(1px); }
+    .kml-group { display:flex; gap:8px; align-items:center; }
+    .kml-sep { width:1px; height:20px; background:#dbe3f0; margin:0 4px; }
     @media (max-width: 900px) {
       .main { grid-template-columns: 1fr; }
       aside {
@@ -90,7 +98,7 @@
 <body>
   <div class="app">
     <header>
-      <h1>Barcarena — Escolas (Conectividade)</h1>
+      <h1>Barcarena — Escolas (Conectividade) + Regiões (KML)</h1>
       <div class="controls">
         <span class="badge"><span class="legend-dot blue"></span> Com internet</span>
         <span class="badge"><span class="legend-dot red"></span> Sem internet</span>
@@ -111,6 +119,17 @@
           </select>
         </label>
         <span class="badge"><strong id="countAll">0</strong> escolas</span>
+      </div>
+
+      <!-- KML controls -->
+      <div class="kml-controls" id="kmlControls">
+        <div class="kml-group">
+          <label class="kml-item"><input type="checkbox" id="kmlAll" checked> <strong>Todos</strong></label>
+          <span class="kml-sep"></span>
+        </div>
+        <div class="kml-group" id="kmlItems"></div>
+        <div class="kml-sep"></div>
+        <div class="kml-legend" id="kmlLegend"></div>
       </div>
     </header>
 
@@ -145,13 +164,16 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
 
   <script>
+    // ====== MAPA BASE ======
     const map = L.map('map').setView([-1.504, -48.625], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    // ====== CLUSTERS (ESCOLAS) ======
     const groupWith = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
     const groupWithout = L.markerClusterGroup({ disableClusteringAtZoom: 16 });
 
@@ -487,6 +509,115 @@
     map.on('click', () => {
       if (window.matchMedia('(max-width: 900px)').matches) $aside.classList.remove('open');
     });
+
+    // ====== KMLs (Regiões) ======
+    // Configure aqui seus KMLs e cores
+    const KMLS = [
+      { id: 'barcarena',    name: 'Barcarena',          file: 'kml/barcarena_dissolved_lines.kml',  color: '#7c3aed' },
+      { id: 'estradas',     name: 'Estradas',           file: 'kml/estradas_dissolved_lines.kml',   color: '#2563eb' },
+      { id: 'ilhas',        name: 'Ilhas',              file: 'kml/ilhas_dissolved_lines.kml',      color: '#10b981' },
+      { id: 'murucupi',     name: 'Murucupi',           file: 'kml/murucupi_dissolved_lines.kml',   color: '#f59e0b' },
+      { id: 'viladoconde',  name: 'Vila do Conde',      file: 'kml/viladoconde_dissolved_lines.kml',color: '#ef4444' },
+    ];
+
+    const kmlLayers = new Map(); // id -> L.GeoJSON layer
+    const kmlBounds = L.featureGroup();
+
+    function styleFor(color) {
+      return {
+        color: color,
+        weight: 3,
+        opacity: 0.9
+      };
+    }
+
+    function addKmlToMap(k) {
+      // omnivore.kml retorna um L.GeoJSON
+      const layer = omnivore.kml(k.file, null, L.geoJSON(null, { style: styleFor(k.color) }));
+      layer.on('ready', () => {
+        kmlBounds.addLayer(layer);
+        if (!map._kmlFitDone) {
+          const b = kmlBounds.getBounds();
+          if (b.isValid()) map.fitBounds(b.pad(0.08));
+          map._kmlFitDone = true;
+        }
+      });
+      layer.addTo(map);
+      kmlLayers.set(k.id, layer);
+    }
+
+    function removeKmlFromMap(id) {
+      const layer = kmlLayers.get(id);
+      if (layer) {
+        map.removeLayer(layer);
+        kmlBounds.removeLayer(layer);
+      }
+    }
+
+    // UI: checkboxes e legenda
+    const $kmlItems = document.getElementById('kmlItems');
+    const $kmlLegend = document.getElementById('kmlLegend');
+    const $kmlAll = document.getElementById('kmlAll');
+
+    function renderKmlUI() {
+      $kmlItems.innerHTML = '';
+      $kmlLegend.innerHTML = '';
+      KMLS.forEach(k => {
+        // checkbox por KML
+        const lbl = document.createElement('label');
+        lbl.className = 'kml-item';
+        lbl.innerHTML = `
+          <span class="kml-swatch" style="background:${k.color}"></span>
+          <input type="checkbox" data-kml="${k.id}" checked> ${k.name}
+        `;
+        $kmlItems.appendChild(lbl);
+
+        // legenda
+        const leg = document.createElement('span');
+        leg.className = 'badge';
+        leg.innerHTML = `<span class="kml-swatch" style="background:${k.color}"></span> ${k.name}`;
+        $kmlLegend.appendChild(leg);
+      });
+    }
+
+    function bindKmlEvents() {
+      // Toggle individual
+      $kmlItems.querySelectorAll('input[type="checkbox"][data-kml]').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-kml');
+          if (e.target.checked) addKmlToMap(KMLS.find(k => k.id === id));
+          else removeKmlFromMap(id);
+
+          // Atualiza "Todos": se algum desmarcado, tira; se todos marcados, marca
+          const allInputs = Array.from($kmlItems.querySelectorAll('input[type="checkbox"][data-kml]'));
+          const allChecked = allInputs.every(i => i.checked);
+          $kmlAll.checked = allChecked;
+        });
+      });
+
+      // Master toggle "Todos"
+      $kmlAll.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        $kmlItems.querySelectorAll('input[type="checkbox"][data-kml]').forEach(i => {
+          i.checked = checked;
+          const id = i.getAttribute('data-kml');
+          if (checked) addKmlToMap(KMLS.find(k => k.id === id));
+          else removeKmlFromMap(id);
+        });
+      });
+    }
+
+    function initKmls() {
+      renderKmlUI();
+      bindKmlEvents();
+      // carrega todos inicialmente
+      KMLS.forEach(addKmlToMap);
+      $kmlAll.checked = true;
+    }
+
+    // Inicializa KMLs após a página estar pronta
+    if (document.readyState !== 'loading') initKmls();
+    else document.addEventListener('DOMContentLoaded', initKmls);
   </script>
 </body>
 </html>
