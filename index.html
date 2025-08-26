@@ -129,7 +129,6 @@
         </div>
         <div class="kml-group" id="kmlItems"></div>
         <div class="kml-sep"></div>
-        <div class="kml-legend" id="kmlLegend"></div>
       </div>
     </header>
 
@@ -561,7 +560,6 @@
 
     function renderKmlUI() {
       $kmlItems.innerHTML = '';
-      $kmlLegend.innerHTML = '';
       KMLS.forEach(k => {
         // checkbox por KML
         const lbl = document.createElement('label');
@@ -573,10 +571,7 @@
         $kmlItems.appendChild(lbl);
 
         // legenda
-        const leg = document.createElement('span');
-        leg.className = 'badge';
-        leg.innerHTML = `<span class="kml-swatch" style="background:${k.color}"></span> ${k.name}`;
-        $kmlLegend.appendChild(leg);
+
       });
     }
 
