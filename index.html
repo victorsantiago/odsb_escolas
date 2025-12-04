@@ -68,7 +68,21 @@
       z-index: 1500;
     }
     .toggle-btn:active { transform: translateY(1px); }
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
 
+    .title-block h1 {
+      margin: 0;
+    }
+
+    .title-block .fonte {
+      font-size: 12px;
+      margin-top: 2px;
+      color: #4b5563; /* cinza suave */
+    }
     /* KML controls */
     .kml-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .kml-legend { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
@@ -98,7 +112,10 @@
 <body>
   <div class="app">
     <header>
-      <h1>Barcarena — Escolas (Conectividade)</h1>
+      <div class="title-block">
+        <h1>Escolas (Conectividade)</h1>
+        <span class="fonte">Fonte: Censo 2023.</span>
+      </div>
       <div class="controls">
         <span class="badge"><span class="legend-dot blue"></span> Com internet</span>
         <span class="badge"><span class="legend-dot red"></span> Sem internet</span>
