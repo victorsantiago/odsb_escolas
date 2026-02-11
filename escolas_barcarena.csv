@@ -1,4 +1,4 @@
-Nome Escola,Dependência,Código INEP,Localização,Internet,Matrículas,Energia Adequada,Conexão adequada,Classificação da cobertura,Situação,Prestadora PBLE,Tecnologia PBLE,Vel.,Fonte de Monitoramento,Nível de conexão,Latitude,Longitude
+Nome Escola,Dependência,Código INEP,Localização,Internet,Matrículas,Energia Adequada,Conexão adequada,Classificação da cobertura,Situação,Prestadora PBLE (Programa de Conectividade nas Escolas),Tecnologia PBLE,Vel. (mbps),Fonte de Monitoramento,Nível de conexão,Latitude,Longitude
 ESCOLA ESTADUAL PADRE JOSE DELGARDES,Estadual,15035735,Rural,Sim,685,Sim,Não,1. Acesso adequado - fibra,Velocidade inadequada,CLARO,Rede Celular,200.0,14172_CONECT_VELOCIDADE,Alguma internet e algum wifi para uso de gestores e professores,-1.5654042,-48.767437
 ESCOLA ESTADUAL CONEGO BATISTA CAMPOS,Estadual,15035867,Urbana,Sim,1211,Sim,Não,1. Acesso adequado - fibra,Velocidade inadequada,OI,ADSL,200.0,14172_CONECT_VELOCIDADE,Alguma internet para uso de gestores,-1.50363,-48.621983
 ESCOLA ESTADUAL EDUARDO ANGELIM,Estadual,15035891,Urbana,Sim,1210,Sim,Não,1. Acesso adequado - fibra,Velocidade inadequada,OI,ADSL,200.0,14172_CONECT_VELOCIDADE,Alguma internet e algum wifi para uso de gestores e professores,-1.5297565,-48.68943
@@ -113,3 +113,10 @@ E M E F JOSE HUMBERTO SOUZA DO NASCIMENTO,Municipal,15577457,Urbana,Sim,1698,Sim
 E M E I CAFEZAL,Municipal,15578429,Rural,Sim,102,Sim,Sim,2. Acesso inadequado - menos de 20 km,Velocidade adequada,CLARO,Rede Celular,100.36,VEL_MAX_6M,Escola conectada com parâmetros adequados para uso pedagógico em sala de aula,-1.4988204,-48.593487
 E M E I F NOVA VIDA,Municipal,15578437,Rural,Sim,18,Sim,Sim,2. Acesso inadequado - menos de 20 km,Velocidade adequada,CLARO,Rede Celular,400.0,EACE_CONECT_VEL_CONTRATADA,Alguma internet para uso de gestores,-1.5392883,-48.65425
 E M E F VER MARCOS MARTINS MAGNO,Municipal,15583945,Urbana,Sim,1129,Sim,Não,1. Acesso adequado - fibra,Velocidade inadequada,OI,ADSL,300.0,PDDE_VEL_CONTRATADA,Alguma internet e algum wifi para uso de gestores e professores,-1.5448435,-48.677812
+EEEF MARIA AMELIA DA SILVA COSTA,Estadual,15035743,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.5770542,-48.6091039
+EEEIF NOSSA SENHORA DE NAZARE,Estadual,15035751,Urbana,-,-,-,-,-,-,-,-,-,-,-,-1.5091795,-48.6174083
+E M E I F SAO LUIZ,Municipal,15036499,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.51891,-48.617
+E M E I F SANTA CECILIA,Municipal,15036820,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.5304,-48.5132
+E M E I F LIMEIRA,Municipal,15143112,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.64583,-48.6375
+EEEF SANTA HELENA,Estadual,15159515,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.5036,-48.6253
+ANEXO RURAL ACY DE JESUS BARROS PEREIRA,Estadual,15178579,Rural,-,-,-,-,-,-,-,-,-,-,-,-1.4939,-48.5471
